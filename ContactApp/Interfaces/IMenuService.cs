@@ -6,5 +6,6 @@
         /// Shows the main menu to the user
         /// </summary>
         void MainMenu();
+
     }
 }

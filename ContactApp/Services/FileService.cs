@@ -9,17 +9,24 @@ internal class FileService : IFileService
 
     public string GetContentFromFile()
     {
-        try
+        if (File.Exists(_filePath))
         {
-            using (var sr = new StreamReader(_filePath))
+            try
             {
-                return sr.ReadToEnd();
+                using (var sr = new StreamReader(_filePath))
+                {
+                    return sr.ReadToEnd();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+                return "[]";
             }
         }
-        catch (Exception ex) 
-        { 
-            Debug.WriteLine(ex.Message);
-            return string.Empty;
+        else
+        {
+            return "[]";      
         }
     }
 

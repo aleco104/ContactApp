@@ -6,13 +6,20 @@ using System.Diagnostics;
 
 namespace ContactApp.Services;
 
-//All logik med att lägga till användare i listan, den mer rena c# koden ligger i ContactService!!!
-
 public class ContactService : IContactService
 {
     private readonly IFileService _fileService = new FileService();
 
-    private static readonly List<IContact> _contacts = [];
+    private static List<IContact> _contacts = [];
+
+    public ContactService()
+    {
+        string contactListString = _fileService.GetContentFromFile();
+        _contacts = JsonConvert.DeserializeObject<List<IContact>>(contactListString, new JsonSerializerSettings
+        {
+            TypeNameHandling = TypeNameHandling.Objects
+        })!;
+    }
 
     public IServiceResult AddContactToList(IContact contact)
     {
@@ -23,14 +30,18 @@ public class ContactService : IContactService
             if (!_contacts.Any(x => x.Email == contact.Email))
             {
                 _contacts.Add(contact);
-               
-                _fileService.SaveContentToFile(JsonConvert.SerializeObject(_contacts));
+
+                _fileService.SaveContentToFile(JsonConvert.SerializeObject(_contacts, new JsonSerializerSettings { 
+                    TypeNameHandling = TypeNameHandling.Objects, Formatting = Formatting.Indented
+                }));
 
                 response.Status = ServiceStatus.SUCCESSED;
+                response.Result = contact;
             }
             else
             {
                 response.Status = ServiceStatus.ALREADY_EXIST;
+                response.Result = "Contact with the same email alreday exists";
             }
         
         }
@@ -55,6 +66,9 @@ public class ContactService : IContactService
             try
             {
                 _contacts.Remove(contact);
+                _fileService.SaveContentToFile(JsonConvert.SerializeObject(_contacts, new JsonSerializerSettings { 
+                    TypeNameHandling = TypeNameHandling.Objects, Formatting = Formatting.Indented
+                }));
                 response.Status = ServiceStatus.SUCCESSED;
                 response.Result = "Contact deleted";
                 return response;
@@ -78,17 +92,23 @@ public class ContactService : IContactService
     public IServiceResult GetContactFromList(string email)
     {
         IServiceResult response = new ServiceResult();
-
-        try
-        {
-            IContact contact = _contacts.FirstOrDefault(x => x.Email == email)!;
-            response.Status = ServiceStatus.SUCCESSED;
-            response.Result = contact;
+        if (_contacts.Any(x => x.Email == email)) { 
+            try
+            {
+                IContact contact = _contacts.FirstOrDefault(x => x.Email == email)!;
+                response.Status = ServiceStatus.SUCCESSED;
+                response.Result = contact;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+                response.Status = ServiceStatus.NOT_FOUND;
+                response.Result = "Contact not found.";
+            }
         }
-        catch (Exception ex)
+        else
         {
-            Debug.WriteLine(ex.Message);
-            response.Status = ServiceStatus.FAILED;
+            response.Status = ServiceStatus.NOT_FOUND;
             response.Result = "Contact not found.";
         }
 
